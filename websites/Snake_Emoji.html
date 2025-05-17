@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snake con Emojis</title>
+    <style>
+        body {
+            font-family: monospace;
+            text-align: center;
+            background-color: #f0f0f0;
+            padding-top: 50px;
+        }
+        #game {
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: 10px;
+            margin: 20px auto;
+            white-space: pre;
+        }
+        .controls {
+            margin: 20px;
+        }
+        button {
+            font-size: 16px;
+            padding: 8px 16px;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐍 Snake con Emojis 🍎</h1>
+    <div id="game"></div>
+    <div class="controls">
+        <button id="start">Comenzar</button>
+        <button id="pause">Pausa</button>
+        <div>Usa las flechas del teclado</div>
+    </div>
+
+    <script>
+        const gameElement = document.getElementById('game');
+        const startButton = document.getElementById('start');
+        const pauseButton = document.getElementById('pause');
+        
+        const size = 15;
+        let snake = [{x: 5, y: 5}];
+        let food = {};
+        let direction = 'right';
+        let nextDirection = 'right';
+        let gameInterval;
+        let isPaused = false;
+        let score = 0;
+        
+        // Emojis del juego
+        const emojis = {
+            snakeHead: '🐍',
+            snakeBody: '🟢',
+            food: '🍎',
+            empty: '⬜',
+            wall: '⬛'
+        };
+        
+        function createBoard() {
+            let board = [];
+            for (let y = 0; y < size; y++) {
+                board[y] = [];
+                for (let x = 0; x < size; x++) {
+                    if (x === 0 || x === size - 1 || y === 0 || y === size - 1) {
+                        board[y][x] = emojis.wall;
+                    } else {
+                        board[y][x] = emojis.empty;
+                    }
+                }
+            }
+            return board;
+        }
+        
+        function placeFood(board) {
+            let emptyCells = [];
+            for (let y = 1; y < size - 1; y++) {
+                for (let x = 1; x < size - 1; x++) {
+                    if (board[y][x] === emojis.empty) {
+                        emptyCells.push({x, y});
+                    }
+                }
+            }
+            
+            if (emptyCells.length > 0) {
+                const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                food = {x: randomCell.x, y: randomCell.y};
+                board[food.y][food.x] = emojis.food;
+            }
+        }
+        
+        function updateGame() {
+            if (isPaused) return;
+            
+            direction = nextDirection;
+            const head = {...snake[0]};
+            
+            // Mover la cabeza según la dirección
+            switch (direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+            
+            // Verificar colisiones
+            const board = createBoard();
+            
+            // Dibujar serpiente en el tablero temporal para detección de colisiones
+            snake.forEach((segment, index) => {
+                if (index === 0) return; // Saltar cabeza (se actualiza después)
+                board[segment.y][segment.x] = emojis.snakeBody;
+            });
+            
+            // Verificar paredes
+            if (head.x <= 0 || head.x >= size - 1 || head.y <= 0 || head.y >= size - 1) {
+                gameOver();
+                return;
+            }
+            
+            // Verificar colisión con el cuerpo
+            if (board[head.y][head.x] === emojis.snakeBody) {
+                gameOver();
+                return;
+            }
+            
+            // Verificar si comió comida
+            const ateFood = head.x === food.x && head.y === food.y;
+            
+            // Mover la serpiente
+            snake.unshift(head);
+            if (!ateFood) {
+                snake.pop();
+            } else {
+                score++;
+                placeFood(board);
+            }
+            
+            // Dibujar el juego
+            renderGame();
+        }
+        
+        function renderGame() {
+            const board = createBoard();
+            
+            // Colocar comida
+            board[food.y][food.x] = emojis.food;
+            
+            // Colocar serpiente
+            snake.forEach((segment, index) => {
+                board[segment.y][segment.x] = index === 0 ? emojis.snakeHead : emojis.snakeBody;
+            });
+            
+            // Convertir el tablero a texto
+            let output = `Puntuación: ${score}\n\n`;
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    output += board[y][x];
+                }
+                output += '\n';
+            }
+            
+            gameElement.textContent = output;
+        }
+        
+        function startGame() {
+            snake = [{x: 5, y: 5}];
+            direction = 'right';
+            nextDirection = 'right';
+            score = 0;
+            isPaused = false;
+            
+            const board = createBoard();
+            placeFood(board);
+            renderGame();
+            
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(updateGame, 200);
+        }
+        
+        function gameOver() {
+            clearInterval(gameInterval);
+            gameElement.textContent += '\n\n💀 ¡Juego terminado! 💀\nPuntuación: ' + score;
+        }
+        
+        // Controles
+        startButton.addEventListener('click', startGame);
+        
+        pauseButton.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseButton.textContent = isPaused ? 'Continuar' : 'Pausa';
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (isPaused) return;
+            
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (direction !== 'down') nextDirection = 'up';
+                    break;
+                case 'ArrowDown':
+                    if (direction !== 'up') nextDirection = 'down';
+                    break;
+                case 'ArrowLeft':
+                    if (direction !== 'right') nextDirection = 'left';
+                    break;
+                case 'ArrowRight':
+                    if (direction !== 'left') nextDirection = 'right';
+                    break;
+            }
+        });
+        
+        // Inicializar
+        startGame();
+    </script>
+</body>
+</html>
