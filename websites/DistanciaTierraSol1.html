@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distancia Tierra-Sol en Tiempo Real</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #0f0c29;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            margin-bottom: 2rem;
+        }
+        .time {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .date {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+        }
+        .distance {
+            font-size: 1.8rem;
+            margin: 1.5rem 0;
+            color: #FFD700;
+        }
+        .orbit-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin-top: 2rem;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+        .info {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="time" id="time"></div>
+        <div class="date" id="date"></div>
+        <div class="distance" id="distance"></div>
+        <div class="info">
+            La distancia varía debido a la órbita elíptica de la Tierra.<br>
+            (1 UA = 149,597,870.7 km)
+        </div>
+    </div>
+
+    <div class="orbit-container">
+        <canvas id="orbitCanvas" width="300" height="300"></canvas>
+    </div>
+
+    <script>
+        // --- Elementos del DOM ---
+        const timeElement = document.getElementById('time');
+        const dateElement = document.getElementById('date');
+        const distanceElement = document.getElementById('distance');
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const ctx = orbitCanvas.getContext('2d');
+
+        // --- Constantes astronómicas ---
+        const AU = 149597870.7; // 1 Unidad Astronómica en km
+        const EARTH_ECCENTRICITY = 0.0167;
+        const SUN_RADIUS = 20;
+        const EARTH_RADIUS = 8;
+
+        // --- Funciones principales ---
+        function updateDateTime() {
+            const now = new Date();
+            
+            // Hora y fecha
+            timeElement.textContent = now.toLocaleTimeString();
+            dateElement.textContent = now.toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        function calculateSunDistance(date) {
+            // Día del año (0-365)
+            const startOfYear = new Date(date.getFullYear(), 0, 0);
+            const dayOfYear = (date - startOfYear) / (1000 * 60 * 60 * 24);
+            
+            // Anomalía media (fórmula simplificada)
+            const meanAnomaly = (2 * Math.PI * dayOfYear / 365.25636) % (2 * Math.PI);
+            
+            // Distancia actual (fórmula de órbita elíptica)
+            const distance = AU * (1 - EARTH_ECCENTRICITY * Math.cos(meanAnomaly));
+            
+            return distance;
+        }
+
+        function drawOrbit(distance) {
+            const centerX = orbitCanvas.width / 2;
+            const centerY = orbitCanvas.height / 2;
+            const orbitRadius = 100; // Radio de la órbita en píxeles
+            
+            // Escalar la distancia real a píxeles (ajustar para visualización)
+            const scaledDistance = (distance / AU) * orbitRadius;
+            const earthAngle = (Date.now() / 86400000) * 2 * Math.PI; // Ángulo basado en el tiempo
+
+            // Limpiar canvas
+            ctx.clearRect(0, 0, orbitCanvas.width, orbitCanvas.height);
+            
+            // Dibujar órbita
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, orbitRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Dibujar Sol (centro)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, SUN_RADIUS, 0, 2 * Math.PI);
+            ctx.fillStyle = '#FFD700';
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.fillText('☀️', centerX, centerY + 5);
+            
+            // Dibujar Tierra (posición actual)
+            const earthX = centerX + scaledDistance * Math.cos(earthAngle);
+            const earthY = centerY + scaledDistance * Math.sin(earthAngle) * 0.93; //0.93 Achatamiento elíptico
+            
+            ctx.beginPath();
+            ctx.arc(earthX, earthY, EARTH_RADIUS, 0, 2 * Math.PI);
+            ctx.fillStyle = '#1E90FF';
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.fillText('🌍', earthX, earthY + 3);
+        }
+
+        function updateAll() {
+            const now = new Date();
+            updateDateTime();
+            
+            // Calcular y mostrar distancia
+            const distance = calculateSunDistance(now);
+            distanceElement.textContent = `Distancia Tierra-Sol: ${(distance / 1000000).toFixed(2)} millones de km`;
+            
+            // Dibujar órbita
+            drawOrbit(distance);
+        }
+
+        // Actualizar cada segundo
+        setInterval(updateAll, 1000);
+        updateAll(); // Iniciar
+    </script>
+</body>
+</html>
